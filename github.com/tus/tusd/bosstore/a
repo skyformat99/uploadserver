@@ -1,0 +1,302 @@
+// /**
+//  * 进行本地文件上传bce-bos服务,后期可优化为直接进行bos存储
+//  */
+package bosstore
+
+//  import (
+// 	// "bytes"
+// 	// "encoding/json"
+// 	// "errors"
+// 	// "fmt"
+// 	// "io"
+// 	// "io/ioutil"
+// 	// "os"
+// 	// "regexp"
+// 	// "strings"
+// 	// "sync"
+
+// 	// "github.com/tus/tusd"
+// 	// "github.com/tus/tusd/uid"
+
+// 	"github.com/baidubce/bce-sdk-go/services/bos"
+// 	"github.com/baidubce/bce-sdk-go/bce"
+// 	"fmt"
+// 	"path/filepath"
+// 	"github.com/baidubce/bce-sdk-go/services/bos/api"
+
+// 	"strconv"
+// 	"crypto/sha256"
+// 	"math/rand"
+// 	"time"
+//  )
+// // // This regular expression matches every character which is not defined in the
+// // // ASCII tables which range from 00 to 7F, inclusive.
+// // var nonASCIIRegexp = regexp.MustCompile(`([^\x00-\x7F])`)
+
+//  type BosStore struct {
+// 	//用户的Access Key 和 Secret Access Key
+// 	AccessKeyID string
+// 	SecretAccessKey string
+// 	//用户指定的Endpoint
+// 	Endpoint 	string
+// 	Client 		*bos.Client
+// 	//bucket 地址
+// 	BucketName 	string
+// 	Path 		string
+// 	// // ObjectPrefix is prepended to the name of each S3 object that is created.
+// 	// // It can be used to create a pseudo-directory structure in the bucket,
+// 	// // e.g. "path/to/my/uploads".
+// 	// Service BOSAPI
+// 	// ObjectPrefix string
+// 	// // MaxPartSize specifies the maximum size of a single part uploaded to S3
+// 	// // in bytes. This value must be bigger than MinPartSize! In order to
+// 	// // choose the correct number, two things have to be kept in mind:
+// 	// //
+// 	// // If this value is too big and uploading the part to S3 is interrupted
+// 	// // expectedly, the entire part is discarded and the end user is required
+// 	// // to resume the upload and re-upload the entire big part. In addition, the
+// 	// // entire part must be written to disk before submitting to S3.
+// 	// //
+// 	// // If this value is too low, a lot of requests to S3 may be made, depending
+// 	// // on how fast data is coming in. This may result in an eventual overhead.
+// 	// MaxPartSize int64
+// 	// // MinPartSize specifies the minimum size of a single part uploaded to S3
+// 	// // in bytes. This number needs to match with the underlying S3 backend or else
+// 	// // uploaded parts will be reject. AWS S3, for example, uses 5MB for this value.
+// 	// MinPartSize int64
+// 	// // MaxMultipartParts is the maximum number of parts an S3 multipart upload is
+// 	// // allowed to have according to AWS S3 API specifications.
+// 	// // See: http://docs.aws.amazon.com/AmazonS3/latest/dev/qfacts.html
+// 	// MaxMultipartParts int64
+// 	// // MaxObjectSize is the maximum size an S3 Object can have according to S3
+// 	// // API specifications. See link above.
+// 	// MaxObjectSize int64
+//  }
+
+// //  type BOSAPI interface {
+// //  	//创建客户端
+// //  	NewClient(ak, sk, endpoint string) (*bos.Client, error)
+// //  	//
+// //  }
+
+// // // New constructs a new storage using the supplied bucket and service object.
+// // func New(accessKeyID, secretAccessKey, endpoint, bucketName string) BosStore {
+// // 	return BosStore{
+// // 		AccessKeyID: 		accessKeyID,
+// // 		SecretAccessKey: 	secretAccessKey,
+// // 		Endpoint: 			endpoint,
+// // 		BucketName: 		bucketName,
+// // 		MaxPartSize:		5 * 1024 * 1024 * 1024,
+// // 		MinPartSize:		5 * 1024 * 1024,
+// // 		MaxMultipartParts:	10000,
+// // 		MaxObjectSize:		5 * 1024 * 1024 * 1024 * 1024,
+// // 	}
+// // }
+
+// // // UseIn sets this store as the core data store in the passed composer and adds
+// // // all possible extension to it.
+// // func (store BosStore) UseIn(composer *tusd.StoreComposer) {
+// // 	composer.UseCore(store)
+// // 	composer.UseTerminater(store)
+// // 	composer.UseFinisher(store)
+// // 	composer.UseGetReader(store)
+// // 	composer.UseConcater(store)
+// // }
+
+// // func (store BosStore) NewUpload(info tusd.FileInfo) (id string, err error) {
+// // 	// an upload larger than MaxObjectSize must throw an error
+// // 	if info.Size > store.MaxObjectSize {
+// // 		return "", fmt.Errorf("bosStore: upload size of %v bytes exceeds MaxObjectSize of %v bytes", info.Size, store.MaxObjectSize)
+// // 	}
+
+// // 	var uploadId string
+// // 	if info.ID == "" {
+// // 		uploadId = uid.Uid()
+// // 	} else {
+// // 		// certain tests set info.ID in advance
+// // 		uploadId = info.ID
+// // 	}
+
+// // 	// Convert meta data into a map of pointers for BOS Go SDK, sigh.
+// // 	metadata := make(map[string]*string, len(info.MetaData))
+// // 	for key, value := range info.MetaData {
+// // 		// Copying the value is required in order to prevent it from being
+// // 		// overwritten by the next iteration.
+// // 		v := nonASCIIRegexp.ReplaceAllString(value, "?")
+// // 		metadata[key] = &v
+// // 	}
+
+// // 	// Create the actual multipart upload
+// // 	res, err := store.Service.CreateMultipartUpload(&s3.CreateMultipartUploadInput{
+// // 		Bucket:   aws.String(store.Bucket),
+// // 		Key:      store.keyWithPrefix(uploadId),
+// // 		Metadata: metadata,
+// // 	})
+// // 	if err != nil {
+// // 		return "", fmt.Errorf("s3store: unable to create multipart upload:\n%s", err)
+// // 	}
+
+// // 	// id = uploadId + "+" + *res.UploadId
+// // 	info.ID = uploadId
+
+// // 	infoJson, err := json.Marshal(info)
+// // 	if err != nil {
+// // 		return "", err
+// // 	}
+
+// // 	// // Create object on S3 containing information about the file
+// // 	// _, err = store.Service.PutObject(&s3.PutObjectInput{
+// // 	// 	Bucket:        aws.String(store.Bucket),
+// // 	// 	Key:           store.keyWithPrefix(uploadId + ".info"),
+// // 	// 	Body:          bytes.NewReader(infoJson),
+// // 	// 	ContentLength: aws.Int64(int64(len(infoJson))),
+// // 	// })
+// // 	err = storage.upload(info)
+// // 	if err != nil {
+// // 		return "", fmt.Errorf("s3store: unable to create info file:\n%s", err)
+// // 	}
+
+// // 	return id, nil
+// // }
+
+// type BosConfig struct {
+// 	//用户的Access Key 和 Secret Access Key
+// 	AccessKeyID string
+// 	SecretAccessKey string
+// 	//用户指定的Endpoint
+// 	Endpoint string
+// 	//bucket 地址
+// 	BucketName string
+// 	//本地文件存储的work地址
+// 	Path string
+// }
+
+// var (
+// 	bosConfig *BosConfig
+// )
+
+// /**
+//  * bos store 接口
+//  */
+// func (this *BosStore) Upload(id string) (url string, err error) {
+// 	fileName := this.binPath(id)
+// 	objectName := fileName
+// 	args := new(api.PutObjectArgs)
+// 	// 设置上传内容的MIME类型
+// 	args.ContentType = "application/octet-stream"
+// 	//设置BOS存储类型为冷存储
+// 	args.StorageClass = api.STORAGE_CLASS_COLD
+// 	//etag就是BOS的该文件的存储文件名称
+// 	etag, errEtag := this.Client.PutObjectFromFile(this.BucketName, objectName, fileName, args)
+// 	if errEtag != nil {
+// 		err = errEtag
+// 		return
+// 	}
+// 	//获取bos存储的访问地址
+// 	url, err = this.getBosAddr(objectName)
+// 	if err != nil {
+// 		fmt.Printf("get bos addr failed:etag[%s] err[%s]", etag, err)
+// 	}
+// 	fmt.Printf("id:%s, bos url:%s\n", id, url)
+// 	return
+// }
+
+// func (this *BosStore) getBosAddr(objectName string) (url string, err error){
+// 	expirationInSeconds := -1
+// 	method := "GET"
+// 	headers := map[string]string {
+// 		"headers": this.Endpoint,
+// 	}
+// 	authParams := this.sin(expirationInSeconds)
+// 	params := map[string]string {
+// 		"authorization":authParams,
+// 	}
+// 	url = this.Client.GeneratePresignedUrl(this.BucketName, objectName,
+// 		expirationInSeconds, method, headers, params)
+// 	//添加域名替换
+// 	return
+// }
+
+// func RandomStr(length int) string {
+// 	str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+// 	bytes := []byte(str)
+// 	result := []byte{}
+// 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+// 	for i := 0; i < length; i++ {
+// 		result = append(result, bytes[r.Intn(len(bytes))])
+// 	}
+// 	return string(result)
+// }
+
+// func (this *BosStore) sin(expirationInSeconds int) (auth string) {
+// 	expirStr := strconv.Itoa(expirationInSeconds)
+// 	tm := time.Unix(time.Now().Unix(), 0)
+// 	timeStr := tm.Format("2006-01-02")
+// 	h := sha256.New()
+// 	h.Write([]byte( RandomStr(64) + this.AccessKeyID))
+// 	sha256SigningKey :=  string(h.Sum(nil))
+// 	auth = "bce-auth-v1/" + this.AccessKeyID + "/" + timeStr + "/" + expirStr + "//" + sha256SigningKey
+// 	return
+// }
+
+// // binPath returns the path to the .bin storing the binary data.
+// func (this *BosStore) binPath(id string) string {
+// 	return filepath.Join(this.Path, id+".bin")
+// }
+// // infoPath returns the path to the .info file storing the file's info.
+// func (this *BosStore) infoPath(id string) string {
+// 	return filepath.Join(this.Path, id+".info")
+// }
+//  /**
+//   * 对外接口
+//   */
+//  /*上传接口*/
+//  func UploadBos (id string) (bosAddr string, err error) {
+// 	bosClient, errGet := getBosClient()
+// 	err = errGet
+// 	if errGet != nil {
+// 		return
+// 	}
+// 	bosAddr, err = bosClient.Upload(id)
+// 	return
+//  }
+
+// /*bos client初始化接口*/
+//  func New (accessKeyID, secretAccessKey, endpoint, bucketName, path string) ( err error) {
+// 	bosConfig = &BosConfig{
+// 		AccessKeyID: accessKeyID,
+// 		SecretAccessKey: secretAccessKey,
+// 		Endpoint: endpoint,
+// 		BucketName: bucketName,
+// 		Path: path,
+// 	}
+// 	fmt.Println("New bos done")
+// 	return
+//  }
+
+
+//  func getBosClient () (bosClient *BosStore, err error) {
+// 	client, errNewClient := bos.NewClient(bosConfig.AccessKeyID, bosConfig.SecretAccessKey, bosConfig.Endpoint)
+// 	if errNewClient != nil {
+// 		err = errNewClient
+// 		return
+// 	}
+// 	/**
+// 	 * bos client参数优化
+// 	 */
+// 	/**网络参数部分*/
+// 	 //连接超时设置为30秒
+// 	client.Config.ConnectionTimeoutInMillis = 1000 * 30
+// 	//连接重试开启
+// 	client.Config.Retry = bce.NewNoRetryPolicy()
+// 	bosClient = &BosStore{
+// 		AccessKeyID: bosConfig.AccessKeyID,
+// 		SecretAccessKey: bosConfig.SecretAccessKey,
+// 		Endpoint: bosConfig.Endpoint,
+// 		Client: client,
+// 		BucketName: bosConfig.BucketName,
+// 		Path: bosConfig.Path,
+// 	}
+// 	return
+//  }
+
